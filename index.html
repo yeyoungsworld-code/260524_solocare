@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>안부ON 충남</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+  <style>
+    body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+    .fade-in { animation: fadeIn 0.2s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-bg { background: rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
+
+// ──────────────────────────────────────────────
+// EMBEDDED DATA
+// ──────────────────────────────────────────────
+const SAMPLE_USERS = [
+  { user_id:"U001", region:"공주시",        age:76, living_alone:true,  is_elderly:true,  monthly_avg_kwh:205.4, recent_kwh:68.2,  electricity_drop_rate:66.8, irregular_meal:true,  no_outing:true,  no_contact:false, need_help:false, score:100, level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 식사 불규칙","최근 외출 없음"], status:"방문 예정" },
+  { user_id:"U002", region:"아산시",        age:82, living_alone:true,  is_elderly:true,  monthly_avg_kwh:178.3, recent_kwh:45.1,  electricity_drop_rate:74.7, irregular_meal:false, no_outing:true,  no_contact:true,  need_help:false, score:105, level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 외출 없음","최근 연락 없음"], status:"확인 중" },
+  { user_id:"U003", region:"천안시 동남구", age:68, living_alone:true,  is_elderly:true,  monthly_avg_kwh:192.1, recent_kwh:72.5,  electricity_drop_rate:62.3, irregular_meal:false, no_outing:true,  no_contact:false, need_help:false, score:85,  level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 외출 없음"], status:"미조치" },
+  { user_id:"U004", region:"천안시 서북구", age:79, living_alone:true,  is_elderly:true,  monthly_avg_kwh:221.6, recent_kwh:99.5,  electricity_drop_rate:55.1, irregular_meal:true,  no_outing:true,  no_contact:false, need_help:false, score:90,  level:"위험", reasons:["전력사용량 40% 이상 감소","1인 가구","고령층","최근 식사 불규칙","최근 외출 없음"], status:"방문 예정" },
+  { user_id:"U005", region:"논산시",        age:85, living_alone:true,  is_elderly:true,  monthly_avg_kwh:187.9, recent_kwh:54.2,  electricity_drop_rate:71.2, irregular_meal:true,  no_outing:true,  no_contact:true,  need_help:false, score:120, level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 식사 불규칙","최근 외출 없음","최근 연락 없음"], status:"미조치" },
+  { user_id:"U006", region:"계룡시",        age:73, living_alone:true,  is_elderly:true,  monthly_avg_kwh:163.4, recent_kwh:84.3,  electricity_drop_rate:48.4, irregular_meal:false, no_outing:true,  no_contact:false, need_help:false, score:75,  level:"위험", reasons:["전력사용량 40% 이상 감소","1인 가구","고령층","최근 외출 없음"], status:"연락 완료" },
+  { user_id:"U007", region:"당진시",        age:71, living_alone:true,  is_elderly:true,  monthly_avg_kwh:209.8, recent_kwh:76.6,  electricity_drop_rate:63.5, irregular_meal:true,  no_outing:false, no_contact:false, need_help:false, score:80,  level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 식사 불규칙"], status:"확인 중" },
+  { user_id:"U008", region:"서산시",        age:77, living_alone:true,  is_elderly:true,  monthly_avg_kwh:198.2, recent_kwh:81.5,  electricity_drop_rate:58.9, irregular_meal:false, no_outing:true,  no_contact:true,  need_help:false, score:95,  level:"위험", reasons:["전력사용량 40% 이상 감소","1인 가구","고령층","최근 외출 없음","최근 연락 없음"], status:"방문 예정" },
+  { user_id:"U009", region:"보령시",        age:80, living_alone:true,  is_elderly:true,  monthly_avg_kwh:174.6, recent_kwh:95.7,  electricity_drop_rate:45.2, irregular_meal:false, no_outing:true,  no_contact:false, need_help:false, score:75,  level:"위험", reasons:["전력사용량 40% 이상 감소","1인 가구","고령층","최근 외출 없음"], status:"미조치" },
+  { user_id:"U010", region:"홍성군",        age:66, living_alone:true,  is_elderly:true,  monthly_avg_kwh:182.3, recent_kwh:51.0,  electricity_drop_rate:72.0, irregular_meal:true,  no_outing:true,  no_contact:false, need_help:false, score:100, level:"위험", reasons:["전력사용량 60% 이상 감소","1인 가구","고령층","최근 식사 불규칙","최근 외출 없음"], status:"확인 중" },
+  { user_id:"U011", region:"예산군",        age:55, living_alone:true,  is_elderly:false, monthly_avg_kwh:145.2, recent_kwh:94.1,  electricity_drop_rate:35.2, irregular_meal:true,  no_outing:false, no_contact:false, need_help:false, score:45,  level:"주의", reasons:["전력사용량 20% 이상 감소","1인 가구","최근 식사 불규칙"], status:"미조치" },
+  { user_id:"U012", region:"청양군",        age:62, living_alone:false, is_elderly:false, monthly_avg_kwh:156.8, recent_kwh:90.8,  electricity_drop_rate:42.1, irregular_meal:false, no_outing:true,  no_contact:false, need_help:false, score:40,  level:"주의", reasons:["전력사용량 40% 이상 감소","최근 외출 없음"], status:"미조치" },
+  { user_id:"U013", region:"태안군",        age:58, living_alone:true,  is_elderly:false, monthly_avg_kwh:138.9, recent_kwh:99.0,  electricity_drop_rate:28.7, irregular_meal:false, no_outing:true,  no_contact:false, need_help:false, score:50,  level:"주의", reasons:["전력사용량 20% 이상 감소","1인 가구","최근 외출 없음"], status:"연락 완료" },
+  { user_id:"U014", region:"서천군",        age:70, living_alone:false, is_elderly:true,  monthly_avg_kwh:167.3, recent_kwh:115.4, electricity_drop_rate:31.0, irregular_meal:true,  no_outing:false, no_contact:false, need_help:false, score:40,  level:"주의", reasons:["전력사용량 20% 이상 감소","고령층","최근 식사 불규칙"], status:"미조치" },
+  { user_id:"U015", region:"부여군",        age:45, living_alone:false, is_elderly:false, monthly_avg_kwh:134.5, recent_kwh:118.0, electricity_drop_rate:12.3, irregular_meal:false, no_outing:false, no_contact:false, need_help:false, score:0,   level:"관심", reasons:["해당 사항 없음"], status:"조치 완료" },
+  { user_id:"U016", region:"금산군",        age:52, living_alone:true,  is_elderly:false, monthly_avg_kwh:149.7, recent_kwh:137.0, electricity_drop_rate:8.5,  irregular_meal:false, no_outing:false, no_contact:false, need_help:false, score:20,  level:"관심", reasons:["1인 가구"], status:"조치 완료" },
+];
+
+const DASHBOARD_SUMMARY = {
+  total: 16, danger: 10, caution: 4, interest: 2,
+  avg_drop_rate: 48.5, region_count: 16,
+};
+
+const RECOMMENDATIONS = {
+  "관심": ["복지정보 안내", "정기 안부확인 서비스 소개", "지역 복지관 프로그램 연계 안내"],
+  "주의": ["전화 안부확인 권장", "가족 또는 지인 연락 권장", "행정복지센터 상담 안내", "복지 서비스 연계 검토"],
+  "위험": ["담당자 우선 안부확인 필요", "전화 확인 후 미응답 시 방문 확인", "긴급 상황 의심 시 119 또는 행정복지센터 연계", "즉시 현장 방문 검토"],
+};
+
+const REGION_DATA = [
+  { region:"공주시",        monthly_avg_kwh:205.4, general_2024:56420, single_2024:21563, rate_2024:38.2, growth:12.4 },
+  { region:"아산시",        monthly_avg_kwh:178.3, general_2024:98340, single_2024:31960, rate_2024:32.5, growth:8.7  },
+  { region:"천안시 동남구", monthly_avg_kwh:192.1, general_2024:112850,single_2024:40401, rate_2024:35.8, growth:10.2 },
+  { region:"천안시 서북구", monthly_avg_kwh:221.6, general_2024:125300,single_2024:41474, rate_2024:33.1, growth:9.5  },
+  { region:"논산시",        monthly_avg_kwh:187.9, general_2024:53210, single_2024:21975, rate_2024:41.3, growth:15.6 },
+  { region:"계룡시",        monthly_avg_kwh:163.4, general_2024:25640, single_2024:7359,  rate_2024:28.7, growth:7.2  },
+  { region:"당진시",        monthly_avg_kwh:209.8, general_2024:67830, single_2024:24690, rate_2024:36.4, growth:11.8 },
+  { region:"서산시",        monthly_avg_kwh:198.2, general_2024:72540, single_2024:27492, rate_2024:37.9, growth:13.1 },
+  { region:"보령시",        monthly_avg_kwh:174.6, general_2024:48320, single_2024:20874, rate_2024:43.2, growth:16.8 },
+  { region:"홍성군",        monthly_avg_kwh:182.3, general_2024:44170, single_2024:17712, rate_2024:40.1, growth:14.3 },
+  { region:"예산군",        monthly_avg_kwh:145.2, general_2024:38960, single_2024:16638, rate_2024:42.7, growth:18.2 },
+  { region:"청양군",        monthly_avg_kwh:156.8, general_2024:19840, single_2024:8987,  rate_2024:45.3, growth:19.7 },
+  { region:"태안군",        monthly_avg_kwh:138.9, general_2024:34520, single_2024:13670, rate_2024:39.6, growth:13.9 },
+  { region:"서천군",        monthly_avg_kwh:167.3, general_2024:28740, single_2024:12875, rate_2024:44.8, growth:20.1 },
+  { region:"부여군",        monthly_avg_kwh:134.5, general_2024:32150, single_2024:13985, rate_2024:43.5, growth:17.4 },
+  { region:"금산군",        monthly_avg_kwh:149.7, general_2024:26890, single_2024:11242, rate_2024:41.8, growth:15.9 },
+];
+
+// ──────────────────────────────────────────────
+// UTILITY FUNCTIONS
+// ──────────────────────────────────────────────
+function calculateRisk({ electricity_drop_rate, living_alone, is_elderly, irregular_meal, no_outing, no_contact, need_help }) {
+  let score = 0; const reasons = [];
+  if (electricity_drop_rate >= 60)      { score += 30; reasons.push("전력사용량 60% 이상 감소"); }
+  else if (electricity_drop_rate >= 40) { score += 20; reasons.push("전력사용량 40% 이상 감소"); }
+  else if (electricity_drop_rate >= 20) { score += 10; reasons.push("전력사용량 20% 이상 감소"); }
+  if (living_alone)    { score += 20; reasons.push("1인 가구"); }
+  if (is_elderly)      { score += 15; reasons.push("고령층"); }
+  if (irregular_meal)  { score += 15; reasons.push("최근 식사 불규칙"); }
+  if (no_outing)       { score += 20; reasons.push("최근 외출 없음"); }
+  if (no_contact)      { score += 20; reasons.push("최근 연락 없음"); }
+  if (need_help)       { score += 20; reasons.push("도움 필요 응답"); }
+  const level = score >= 70 ? "위험" : score >= 40 ? "주의" : "관심";
+  return { score, level, reasons };
+}
+
+function convertSurveyInput(s) {
+  return {
+    user_id: s.user_id,
+    irregular_meal: s.regular_meal === false,
+    no_outing:      s.has_outing === false,
+    no_contact:     s.has_contact === false,
+    need_help:      s.need_help === true,
+  };
+}
+
+function generateAiSummary(user, recs) {
+  const r = Array.isArray(user.reasons) ? user.reasons.filter(x => x !== "해당 사항 없음") : [];
+  const recText = (recs || []).slice(0, 2).join(', ');
+  if (user.level === "위험") {
+    return `${user.user_id} 대상자(${user.region}, ${user.age}세)는 ${r.slice(0,3).join(', ')} 등의 사유로 안부확인 필요도가 '위험' 등급(${user.score}점)으로 분류되었습니다. 전력사용량이 평균 대비 ${user.electricity_drop_rate}% 감소한 상태이므로 우선적으로 전화 확인이 필요하며, 미응답 시 방문 확인이 권장됩니다.`;
+  }
+  if (user.level === "주의") {
+    return `${user.user_id} 대상자(${user.region}, ${user.age}세)는 ${r.join(', ')} 사유로 '주의' 등급(${user.score}점)으로 분류되었습니다. 정기적인 전화 안부확인과 함께 복지 서비스 연계를 검토하시기 바랍니다.`;
+  }
+  return `${user.user_id} 대상자(${user.region}, ${user.age}세)는 현재 '관심' 등급(${user.score}점)으로 분류되어 있습니다. 정기적인 안부확인 서비스를 안내하고 지역 복지관 프로그램 연계를 고려해 주세요.`;
+}
+
+function generateContactMessage(user) {
+  return `안녕하세요, 충남 ${user.region} 행정복지센터입니다.\n\n안녕히 계시는지 안부 확인을 위해 연락드렸습니다.\n최근 식사와 건강 상태는 괜찮으신지 여쭤보고 싶습니다.\n\n혹시 필요하신 도움이 있거나 불편하신 점이 있으시면 언제든지 말씀해 주세요.\n저희가 함께 도와드리겠습니다.\n\n📞 행정복지센터 대표번호로 연락 주시면 됩니다.\n감사합니다.`;
+}
+
+function generateDangerReport(dangerUsers) {
+  const regions = [...new Set(dangerUsers.map(u => u.region))].join(', ');
+  const avgScore = dangerUsers.length ? Math.round(dangerUsers.reduce((a,b) => a + b.score, 0) / dangerUsers.length) : 0;
+  const highDrop = dangerUsers.filter(u => u.electricity_drop_rate >= 60).length;
+  return `오늘 우선 확인이 필요한 위험 등급 대상자는 총 ${dangerUsers.length}명입니다.\n주요 해당 지역: ${regions}.\n\n이 중 전력사용량 60% 이상 감소 대상자가 ${highDrop}명으로, 평균 안부확인 필요도 점수는 ${avgScore}점입니다. 전력사용량 감소율이 높고 최근 외출 또는 연락이 없는 대상자가 다수 포함되어 있습니다.\n\n우선 위험 등급 대상자에게 전화 확인을 진행하고, 미응답자는 방문 확인 대상으로 분류하는 것이 권장됩니다.`;
+}
+
+// ──────────────────────────────────────────────
+// COMPONENTS
+// ──────────────────────────────────────────────
+
+// RiskBadge
+function RiskBadge({ level, size = "md" }) {
+  const cfg = {
+    "위험": "bg-red-100 text-red-700 border border-red-300",
+    "주의": "bg-yellow-100 text-yellow-700 border border-yellow-300",
+    "관심": "bg-green-100 text-green-700 border border-green-300",
+  };
+  const sz = size === "lg" ? "px-3 py-1.5 text-base font-bold" : "px-2 py-0.5 text-sm font-semibold";
+  return <span className={`inline-block rounded-full ${sz} ${cfg[level] || "bg-gray-100 text-gray-600"}`}>{level}</span>;
+}
+
+// SummaryCards
+function SummaryCards({ summary, onDangerReport }) {
+  const cards = [
+    { label:"전체 대상자", value:`${summary.total}명`, icon:"👥", color:"bg-blue-50 border-blue-200 text-blue-700" },
+    { label:"위험 대상자", value:`${summary.danger}명`, icon:"🔴", color:"bg-red-50 border-red-200 text-red-700", click: onDangerReport },
+    { label:"주의 대상자", value:`${summary.caution}명`, icon:"🟡", color:"bg-yellow-50 border-yellow-200 text-yellow-700" },
+    { label:"관심 대상자", value:`${summary.interest}명`, icon:"🟢", color:"bg-green-50 border-green-200 text-green-700" },
+    { label:"평균 전력 감소율", value:`${summary.avg_drop_rate}%`, icon:"⚡", color:"bg-purple-50 border-purple-200 text-purple-700" },
+    { label:"관리 지역 수", value:`${summary.region_count}개`, icon:"📍", color:"bg-indigo-50 border-indigo-200 text-indigo-700" },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      {cards.map(c => (
+        <div key={c.label}
+          onClick={c.click}
+          className={`border rounded-xl p-4 ${c.color} ${c.click ? "cursor-pointer hover:shadow-md transition-shadow" : ""} fade-in`}>
+          <div className="text-2xl mb-1">{c.icon}</div>
+          <div className="text-xl font-bold">{c.value}</div>
+          <div className="text-xs mt-0.5 opacity-80">{c.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// StatusBadge
+function StatusBadge({ status }) {
+  const cfg = {
+    "방문 예정": "bg-blue-100 text-blue-700",
+    "확인 중":   "bg-yellow-100 text-yellow-700",
+    "연락 완료": "bg-green-100 text-green-700",
+    "조치 완료": "bg-gray-100 text-gray-600",
+    "미조치":    "bg-red-100 text-red-600",
+  };
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${cfg[status] || "bg-gray-100 text-gray-600"}`}>{status}</span>;
+}
+
+// UserDetailModal
+function UserDetailModal({ user, onClose }) {
+  const [aiSummary, setAiSummary] = useState("");
+  const [contactMsg, setContactMsg] = useState("");
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [loadingContact, setLoadingContact] = useState(false);
+  const recs = RECOMMENDATIONS[user.level] || [];
+
+  const handleAiSummary = () => {
+    setLoadingAi(true);
+    setTimeout(() => {
+      setAiSummary(generateAiSummary(user, recs));
+      setLoadingAi(false);
+    }, 800);
+  };
+  const handleContact = () => {
+    setLoadingContact(true);
+    setTimeout(() => {
+      setContactMsg(generateContactMessage(user));
+      setLoadingContact(false);
+    }, 600);
+  };
+
+  const boolLabel = (v) => v ? "예" : "아니오";
+  const boolColor = (v, trueIsRed=true) => v
+    ? (trueIsRed ? "text-red-600 font-semibold" : "text-green-600 font-semibold")
+    : (trueIsRed ? "text-gray-500" : "text-gray-500");
+
+  return (
+    <div className="fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in">
+        <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <span className="text-xl font-bold text-gray-800">{user.user_id}</span>
+            <RiskBadge level={user.level} size="lg" />
+            <StatusBadge status={user.status} />
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+        <div className="p-5 space-y-5">
+          {/* 기본 정보 */}
+          <Section title="기본 정보">
+            <Row label="지역" value={user.region} />
+            <Row label="나이" value={`${user.age}세`} />
+            <Row label="1인 가구" value={boolLabel(user.living_alone)} valueClass={boolColor(user.living_alone, false)} />
+            <Row label="고령층 여부" value={boolLabel(user.is_elderly)} valueClass={boolColor(user.is_elderly, false)} />
+          </Section>
+          {/* 전력 정보 */}
+          <Section title="⚡ 전력 정보">
+            <Row label="월평균 전력량" value={`${user.monthly_avg_kwh} kWh`} />
+            <Row label="최근 전력량" value={`${user.recent_kwh} kWh`} />
+            <Row label="전력 감소율" value={`${user.electricity_drop_rate}%`}
+              valueClass={user.electricity_drop_rate >= 60 ? "text-red-600 font-bold" : user.electricity_drop_rate >= 40 ? "text-orange-500 font-semibold" : "text-yellow-600"} />
+          </Section>
+          {/* 문진 응답 */}
+          <Section title="📋 문진 응답">
+            <Row label="식사 불규칙" value={boolLabel(user.irregular_meal)} valueClass={boolColor(user.irregular_meal)} />
+            <Row label="외출 없음" value={boolLabel(user.no_outing)} valueClass={boolColor(user.no_outing)} />
+            <Row label="연락 없음" value={boolLabel(user.no_contact)} valueClass={boolColor(user.no_contact)} />
+            <Row label="도움 필요" value={boolLabel(user.need_help)} valueClass={boolColor(user.need_help)} />
+          </Section>
+          {/* 안부확인 필요도 */}
+          <Section title="📊 안부확인 필요도">
+            <div className="flex items-center gap-4 mb-2">
+              <span className="text-3xl font-bold text-gray-800">{user.score}점</span>
+              <RiskBadge level={user.level} size="lg" />
+            </div>
+            <div className="mt-2">
+              <div className="text-sm font-semibold text-gray-600 mb-1">주요 사유</div>
+              <ul className="space-y-1">
+                {user.reasons.filter(r => r !== "해당 사항 없음").map(r => (
+                  <li key={r} className="text-sm flex items-start gap-2">
+                    <span className="text-red-400 mt-0.5">•</span><span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Section>
+          {/* 추천 조치 */}
+          <Section title="✅ 추천 조치">
+            <ul className="space-y-1">
+              {recs.map(r => (
+                <li key={r} className="text-sm flex items-start gap-2">
+                  <span className="text-blue-400 mt-0.5">→</span><span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+          {/* AI 버튼 */}
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={handleAiSummary} disabled={loadingAi}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-60 transition-colors">
+              {loadingAi ? "생성 중..." : "🤖 AI 요약 생성"}
+            </button>
+            <button onClick={handleContact} disabled={loadingContact}
+              className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 disabled:opacity-60 transition-colors">
+              {loadingContact ? "생성 중..." : "💬 안부 문구 생성"}
+            </button>
+          </div>
+          {aiSummary && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 fade-in">
+              <div className="text-xs font-bold text-indigo-600 mb-1">AI 요약</div>
+              <p className="text-sm text-gray-700 leading-relaxed">{aiSummary}</p>
+            </div>
+          )}
+          {contactMsg && (
+            <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 fade-in">
+              <div className="text-xs font-bold text-teal-600 mb-1">안부확인 문구</div>
+              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{contactMsg}</pre>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div>
+      <div className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wide">{title}</div>
+      <div className="bg-gray-50 rounded-xl p-3 space-y-2">{children}</div>
+    </div>
+  );
+}
+function Row({ label, value, valueClass="" }) {
+  return (
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className={valueClass || "text-gray-800 font-medium"}>{value}</span>
+    </div>
+  );
+}
+
+// UserTable
+function UserTable({ users, onSelectUser }) {
+  const [levelFilter, setLevelFilter] = useState("전체");
+  const [regionFilter, setRegionFilter] = useState("전체");
+  const [sort, setSort] = useState("위험등급 우선");
+  const regions = ["전체", ...new Set(users.map(u => u.region))];
+  const levels = ["전체","위험","주의","관심"];
+  const sorts = ["위험등급 우선","점수 높은 순","전력 감소율 높은 순","나이 높은 순"];
+
+  const filtered = useMemo(() => {
+    let list = [...users];
+    if (levelFilter !== "전체") list = list.filter(u => u.level === levelFilter);
+    if (regionFilter !== "전체") list = list.filter(u => u.region === regionFilter);
+    const order = { "위험":0,"주의":1,"관심":2 };
+    if (sort === "위험등급 우선")       list.sort((a,b) => order[a.level] - order[b.level] || b.score - a.score);
+    else if (sort === "점수 높은 순")    list.sort((a,b) => b.score - a.score);
+    else if (sort === "전력 감소율 높은 순") list.sort((a,b) => b.electricity_drop_rate - a.electricity_drop_rate);
+    else if (sort === "나이 높은 순")    list.sort((a,b) => b.age - a.age);
+    return list;
+  }, [users, levelFilter, regionFilter, sort]);
+
+  return (
+    <div>
+      {/* 필터/정렬 */}
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <div className="flex gap-1">
+          {levels.map(l => (
+            <button key={l} onClick={() => setLevelFilter(l)}
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${levelFilter===l
+                ? l==="위험" ? "bg-red-500 text-white" : l==="주의" ? "bg-yellow-400 text-white" : l==="관심" ? "bg-green-500 text-white" : "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <select value={regionFilter} onChange={e=>setRegionFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-1 text-sm text-gray-700 bg-white">
+          {regions.map(r => <option key={r}>{r}</option>)}
+        </select>
+        <select value={sort} onChange={e=>setSort(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-1 text-sm text-gray-700 bg-white">
+          {sorts.map(s => <option key={s}>{s}</option>)}
+        </select>
+        <span className="text-sm text-gray-400 ml-auto">{filtered.length}명</span>
+      </div>
+      {/* 테이블 */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
+            <tr>
+              {["대상자 ID","지역","나이","전력 감소율","점수","등급","상태"].map(h => (
+                <th key={h} className="px-4 py-3 text-left font-semibold">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {filtered.map(u => (
+              <tr key={u.user_id} onClick={() => onSelectUser(u)}
+                className="hover:bg-indigo-50 cursor-pointer transition-colors">
+                <td className="px-4 py-3 font-bold text-indigo-700">{u.user_id}</td>
+                <td className="px-4 py-3 text-gray-700">{u.region}</td>
+                <td className="px-4 py-3 text-gray-700">{u.age}세</td>
+                <td className="px-4 py-3">
+                  <span className={`font-semibold ${u.electricity_drop_rate>=60?"text-red-600":u.electricity_drop_rate>=40?"text-orange-500":"text-yellow-600"}`}>
+                    {u.electricity_drop_rate}%
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-bold text-gray-800">{u.score}점</td>
+                <td className="px-4 py-3"><RiskBadge level={u.level} /></td>
+                <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">해당하는 대상자가 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// RegionStats
+function RegionStats() {
+  const short = REGION_DATA.map(d => ({ ...d, r: d.region.replace("천안시 ","천안 ") }));
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {REGION_DATA.slice(0,8).map(d => (
+          <div key={d.region} className="bg-white border border-gray-200 rounded-xl p-3">
+            <div className="text-xs text-gray-500">{d.region}</div>
+            <div className="font-bold text-gray-800 mt-1">{d.rate_2024}%</div>
+            <div className="text-xs text-gray-400">1인 가구 비율</div>
+            <div className="text-xs text-indigo-600 mt-0.5">+{d.growth}% 증가</div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-gray-600 mb-3">2024년 지역별 1인 가구 비율 (%)</h3>
+        <div style={{height:280}}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={short} margin={{top:5,right:10,left:0,bottom:60}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="r" tick={{fontSize:11}} angle={-40} textAnchor="end" interval={0} />
+              <YAxis tick={{fontSize:11}} domain={[0,60]} unit="%" />
+              <Tooltip formatter={(v) => [`${v}%`, "1인 가구 비율"]} />
+              <Bar dataKey="rate_2024" radius={[4,4,0,0]}>
+                {short.map((d,i) => <Cell key={i} fill={d.rate_2024>=43?"#ef4444":d.rate_2024>=38?"#f97316":"#6366f1"} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-bold text-gray-600 mb-3">2020→2024 지역별 1인 가구 증가율 (%)</h3>
+        <div style={{height:280}}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={short} margin={{top:5,right:10,left:0,bottom:60}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="r" tick={{fontSize:11}} angle={-40} textAnchor="end" interval={0} />
+              <YAxis tick={{fontSize:11}} domain={[0,25]} unit="%" />
+              <Tooltip formatter={(v) => [`+${v}%`, "증가율"]} />
+              <Bar dataKey="growth" radius={[4,4,0,0]}>
+                {short.map((d,i) => <Cell key={i} fill={d.growth>=18?"#ef4444":d.growth>=13?"#f97316":"#10b981"} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// SurveyForm
+function SurveyForm({ onResult }) {
+  const [form, setForm] = useState({ user_id:"", regular_meal:null, has_outing:null, has_contact:null, need_help:null });
+  const [error, setError] = useState("");
+
+  const set = (key, val) => setForm(f => ({...f, [key]: val}));
+
+  const YesNo = ({ label, field }) => (
+    <div className="bg-gray-50 rounded-xl p-4">
+      <p className="text-sm font-semibold text-gray-700 mb-3">{label}</p>
+      <div className="flex gap-3">
+        {[true, false].map(v => (
+          <button key={String(v)} onClick={() => set(field, v)}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all ${form[field]===v
+              ? (v ? "border-green-500 bg-green-50 text-green-700" : "border-red-400 bg-red-50 text-red-600")
+              : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"}`}>
+            {v ? "예" : "아니오"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  const submit = () => {
+    if (!form.user_id) { setError("대상자 ID를 선택해주세요."); return; }
+    if ([form.regular_meal, form.has_outing, form.has_contact, form.need_help].some(v => v === null)) {
+      setError("모든 질문에 답변해 주세요."); return;
+    }
+    setError("");
+    const user = SAMPLE_USERS.find(u => u.user_id === form.user_id);
+    if (!user) { setError("대상자를 찾을 수 없습니다."); return; }
+    const converted = convertSurveyInput(form);
+    const result = calculateRisk({
+      electricity_drop_rate: user.electricity_drop_rate,
+      living_alone: user.living_alone,
+      is_elderly: user.is_elderly,
+      ...converted,
+    });
+    const recs = RECOMMENDATIONS[result.level] || [];
+    const summary = generateAiSummary({ ...user, ...result }, recs);
+    onResult({ user, survey: converted, result, recs, summary });
+  };
+
+  return (
+    <div className="max-w-lg mx-auto space-y-4">
+      <div className="bg-gray-50 rounded-xl p-4">
+        <p className="text-sm font-semibold text-gray-700 mb-2">1. 대상자 ID를 선택해주세요.</p>
+        <select value={form.user_id} onChange={e => set("user_id", e.target.value)}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-700">
+          <option value="">-- 선택 --</option>
+          {SAMPLE_USERS.map(u => <option key={u.user_id} value={u.user_id}>{u.user_id} ({u.region}, {u.age}세)</option>)}
+        </select>
+      </div>
+      <YesNo label="2. 최근 3일 동안 식사를 규칙적으로 하셨나요?" field="regular_meal" />
+      <YesNo label="3. 최근 7일 동안 외출한 적이 있나요?" field="has_outing" />
+      <YesNo label="4. 최근 7일 동안 가족, 친구, 이웃과 연락한 적이 있나요?" field="has_contact" />
+      <YesNo label="5. 현재 몸이 아프거나 도움이 필요한 상태인가요?" field="need_help" />
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+      <button onClick={submit}
+        className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-base hover:bg-indigo-700 transition-colors shadow-sm">
+        문진 제출 →
+      </button>
+    </div>
+  );
+}
+
+// ResultCard
+function ResultCard({ data, onBack }) {
+  const { user, result, recs, summary } = data;
+  const levelColor = { "위험":"bg-red-50 border-red-300", "주의":"bg-yellow-50 border-yellow-300", "관심":"bg-green-50 border-green-300" };
+  return (
+    <div className="max-w-lg mx-auto space-y-4 fade-in">
+      <div className={`rounded-2xl border-2 p-6 ${levelColor[result.level]}`}>
+        <div className="text-center mb-4">
+          <div className="text-sm text-gray-500 mb-1">안부확인 필요도</div>
+          <RiskBadge level={result.level} size="lg" />
+          <div className="text-4xl font-bold text-gray-800 mt-2">{result.score}점</div>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="bg-white rounded-lg p-2 text-center">
+            <div className="text-gray-400 text-xs">전력 감소율</div>
+            <div className="font-bold text-gray-800">{user.electricity_drop_rate}%</div>
+          </div>
+          <div className="bg-white rounded-lg p-2 text-center">
+            <div className="text-gray-400 text-xs">대상자</div>
+            <div className="font-bold text-gray-800">{user.user_id} ({user.age}세)</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="text-sm font-bold text-gray-600 mb-2">주요 사유</div>
+        <ul className="space-y-1">
+          {result.reasons.map(r => (
+            <li key={r} className="text-sm flex items-start gap-2">
+              <span className="text-red-400 mt-0.5">•</span><span>{r}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="text-sm font-bold text-gray-600 mb-2">추천 조치</div>
+        <ul className="space-y-1">
+          {recs.map(r => (
+            <li key={r} className="text-sm flex items-start gap-2">
+              <span className="text-blue-400 mt-0.5">→</span><span>{r}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+        <div className="text-xs font-bold text-indigo-600 mb-1">AI 요약</div>
+        <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+      </div>
+
+      <button onClick={onBack}
+        className="w-full py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+        ← 다시 문진하기
+      </button>
+    </div>
+  );
+}
+
+// DangerReportModal
+function DangerReportModal({ users, onClose }) {
+  const report = generateDangerReport(users);
+  return (
+    <div className="fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg fade-in">
+        <div className="flex items-center justify-between p-5 border-b">
+          <h2 className="font-bold text-gray-800">🔴 오늘의 위험 대상 요약</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        <div className="p-5">
+          <pre className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-sans">{report}</pre>
+          <div className="mt-4">
+            <div className="text-xs font-bold text-gray-500 mb-2">위험 대상자 목록</div>
+            <div className="space-y-1">
+              {users.map(u => (
+                <div key={u.user_id} className="flex justify-between text-sm bg-red-50 rounded-lg px-3 py-1.5">
+                  <span className="font-semibold text-gray-700">{u.user_id} ({u.region}, {u.age}세)</span>
+                  <span className="text-red-600 font-bold">{u.score}점</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// PAGES
+// ──────────────────────────────────────────────
+
+function HomePage({ navigate }) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex flex-col items-center justify-center px-4">
+      <div className="text-center max-w-md fade-in">
+        <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full mb-6">
+          충청남도 복지 안전망
+        </div>
+        <h1 className="text-4xl font-black text-gray-900 mb-2">
+          안부<span className="text-indigo-600">ON</span> 충남
+        </h1>
+        <p className="text-gray-500 text-sm mb-2">
+          전력사용 패턴 + 생활 문진을 결합한<br/>1인 가구 안부확인 필요도 분석 서비스
+        </p>
+        <div className="flex gap-2 justify-center flex-wrap mb-8 mt-4">
+          {["전력 이상징후 감지","생활 문진 연계","위험등급 자동 산출","담당자 조치 안내"].map(t => (
+            <span key={t} className="bg-white border border-gray-200 text-gray-600 text-xs px-2.5 py-1 rounded-full">{t}</span>
+          ))}
+        </div>
+        <div className="space-y-3">
+          <button onClick={() => navigate("admin")}
+            className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+            관리자 대시보드 →
+          </button>
+          <button onClick={() => navigate("survey")}
+            className="w-full py-4 bg-white text-indigo-600 border-2 border-indigo-200 rounded-2xl font-bold text-lg hover:bg-indigo-50 transition-colors">
+            자가 문진 시작 →
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-6">
+          ※ 이 서비스는 고독사를 판정하는 서비스가 아닙니다.<br/>
+          안부확인이 필요한 대상자를 선별하는 보조 도구입니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard({ navigate }) {
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showDangerReport, setShowDangerReport] = useState(false);
+  const [activeTab, setActiveTab] = useState("users");
+  const dangerUsers = SAMPLE_USERS.filter(u => u.level === "위험");
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <button onClick={() => navigate("home")} className="font-black text-xl text-gray-900">
+            안부<span className="text-indigo-600">ON</span> <span className="text-sm text-gray-400 font-normal">충남</span>
+          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowDangerReport(true)}
+              className="px-3 py-1.5 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition-colors">
+              🔴 오늘의 위험 요약
+            </button>
+            <button onClick={() => navigate("survey")}
+              className="px-3 py-1.5 border border-indigo-300 text-indigo-600 text-sm font-semibold rounded-lg hover:bg-indigo-50 transition-colors">
+              문진 입력
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <SummaryCards summary={DASHBOARD_SUMMARY} onDangerReport={() => setShowDangerReport(true)} />
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4 border-b border-gray-200">
+          {[["users","대상자 목록"],["region","지역 통계"]].map(([k,v]) => (
+            <button key={k} onClick={() => setActiveTab(k)}
+              className={`pb-2 px-3 text-sm font-semibold border-b-2 transition-colors ${activeTab===k
+                ? "border-indigo-600 text-indigo-600" : "border-transparent text-gray-400 hover:text-gray-600"}`}>
+              {v}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "users" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <UserTable users={SAMPLE_USERS} onSelectUser={setSelectedUser} />
+          </div>
+        )}
+        {activeTab === "region" && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <h2 className="font-bold text-gray-800 mb-5">충남 지역별 1인 가구 통계</h2>
+            <RegionStats />
+          </div>
+        )}
+      </main>
+
+      {selectedUser && <UserDetailModal user={selectedUser} onClose={() => setSelectedUser(null)} />}
+      {showDangerReport && <DangerReportModal users={dangerUsers} onClose={() => setShowDangerReport(false)} />}
+    </div>
+  );
+}
+
+function SurveyPage({ navigate }) {
+  const [result, setResult] = useState(null);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
+          <button onClick={() => navigate("home")} className="text-gray-400 hover:text-gray-700">←</button>
+          <h1 className="font-bold text-gray-800">{result ? "문진 결과" : "생활 문진"}</h1>
+          <button onClick={() => navigate("admin")} className="ml-auto text-xs text-indigo-600 hover:underline">관리자 대시보드</button>
+        </div>
+      </header>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {result
+          ? <ResultCard data={result} onBack={() => setResult(null)} />
+          : (
+            <div>
+              <p className="text-center text-sm text-gray-500 mb-6">
+                아래 질문에 답변해 주세요. 전력 데이터는 시스템에서 자동으로 불러옵니다.
+              </p>
+              <SurveyForm onResult={setResult} />
+            </div>
+          )
+        }
+      </main>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// APP (Simple hash router)
+// ──────────────────────────────────────────────
+function App() {
+  const [page, setPage] = useState("home");
+  const navigate = (p) => setPage(p);
+
+  if (page === "admin")  return <AdminDashboard navigate={navigate} />;
+  if (page === "survey") return <SurveyPage navigate={navigate} />;
+  return <HomePage navigate={navigate} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
