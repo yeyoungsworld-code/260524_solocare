@@ -711,6 +711,27 @@ function AdminDashboard({ navigate }) {
   );
 }
 
+function SurveyDone({ user, onBack }) {
+  return (
+    <div className="max-w-sm mx-auto text-center fade-in pt-8">
+      <div className="text-6xl mb-4">✅</div>
+      <h2 className="text-2xl font-black text-gray-800 mb-2">접수되었습니다</h2>
+      <p className="text-gray-500 text-sm leading-relaxed mb-6">
+        <span className="font-semibold text-gray-700">{user.user_id}</span> 대상자의 생활 문진이<br/>
+        정상적으로 접수되었습니다.<br/>
+        담당자가 확인 후 안내드리겠습니다.
+      </p>
+      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-700 mb-6">
+        📋 접수 일시: {new Date().toLocaleString("ko-KR")}
+      </div>
+      <button onClick={onBack}
+        className="w-full py-3 border border-gray-200 text-gray-600 rounded-xl text-sm hover:bg-gray-50 transition-colors">
+        ← 다시 문진하기
+      </button>
+    </div>
+  );
+}
+
 function SurveyPage({ navigate }) {
   const [result, setResult] = useState(null);
 
@@ -719,13 +740,13 @@ function SurveyPage({ navigate }) {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <button onClick={() => navigate("home")} className="text-gray-400 hover:text-gray-700">←</button>
-          <h1 className="font-bold text-gray-800">{result ? "문진 결과" : "생활 문진"}</h1>
+          <h1 className="font-bold text-gray-800">{result ? "문진 접수 완료" : "생활 문진"}</h1>
           <button onClick={() => navigate("admin")} className="ml-auto text-xs text-indigo-600 hover:underline">관리자 대시보드</button>
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-4 py-8">
         {result
-          ? <ResultCard data={result} onBack={() => setResult(null)} />
+          ? <SurveyDone user={result.user} onBack={() => setResult(null)} />
           : (
             <div>
               <p className="text-center text-sm text-gray-500 mb-6">
