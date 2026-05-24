@@ -8,7 +8,7 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     body { font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
     .fade-in { animation: fadeIn 0.2s ease-in; }
@@ -20,8 +20,7 @@
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect, useMemo, useCallback } = React;
-const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } = Recharts;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 // ──────────────────────────────────────────────
 // EMBEDDED DATA
@@ -394,13 +393,45 @@ function UserTable({ users, onSelectUser }) {
   );
 }
 
+// BarChartCanvas — Chart.js 기반 막대그래프
+function BarChartCanvas({ labels, values, colors, unit }) {
+  const ref = useRef(null);
+  const chartInst = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    if (chartInst.current) chartInst.current.destroy();
+    chartInst.current = new Chart(ref.current, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{ data: values, backgroundColor: colors, borderRadius: 6 }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          callbacks: { label: ctx => ` ${ctx.parsed.y}${unit}` }
+        }},
+        scales: {
+          x: { ticks: { font: { size: 11 }, maxRotation: 40 } },
+          y: { beginAtZero: true, ticks: { callback: v => v + unit, font: { size: 11 } } },
+        },
+      },
+    });
+    return () => chartInst.current && chartInst.current.destroy();
+  }, []);
+  return <canvas ref={ref}></canvas>;
+}
+
 // RegionStats
 function RegionStats() {
-  const short = REGION_DATA.map(d => ({ ...d, r: d.region.replace("천안시 ","천안 ") }));
+  const labels = REGION_DATA.map(d => d.region.replace("천안시 ","천안 "));
+  const rateColors = REGION_DATA.map(d => d.rate_2024>=43?"#ef4444":d.rate_2024>=38?"#f97316":"#6366f1");
+  const growColors = REGION_DATA.map(d => d.growth>=18?"#ef4444":d.growth>=13?"#f97316":"#10b981");
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {REGION_DATA.slice(0,8).map(d => (
+        {REGION_DATA.map(d => (
           <div key={d.region} className="bg-white border border-gray-200 rounded-xl p-3">
             <div className="text-xs text-gray-500">{d.region}</div>
             <div className="font-bold text-gray-800 mt-1">{d.rate_2024}%</div>
@@ -409,38 +440,16 @@ function RegionStats() {
           </div>
         ))}
       </div>
-
       <div>
         <h3 className="text-sm font-bold text-gray-600 mb-3">2024년 지역별 1인 가구 비율 (%)</h3>
         <div style={{height:280}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={short} margin={{top:5,right:10,left:0,bottom:60}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="r" tick={{fontSize:11}} angle={-40} textAnchor="end" interval={0} />
-              <YAxis tick={{fontSize:11}} domain={[0,60]} unit="%" />
-              <Tooltip formatter={(v) => [`${v}%`, "1인 가구 비율"]} />
-              <Bar dataKey="rate_2024" radius={[4,4,0,0]}>
-                {short.map((d,i) => <Cell key={i} fill={d.rate_2024>=43?"#ef4444":d.rate_2024>=38?"#f97316":"#6366f1"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChartCanvas labels={labels} values={REGION_DATA.map(d=>d.rate_2024)} colors={rateColors} unit="%" />
         </div>
       </div>
-
       <div>
         <h3 className="text-sm font-bold text-gray-600 mb-3">2020→2024 지역별 1인 가구 증가율 (%)</h3>
         <div style={{height:280}}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={short} margin={{top:5,right:10,left:0,bottom:60}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="r" tick={{fontSize:11}} angle={-40} textAnchor="end" interval={0} />
-              <YAxis tick={{fontSize:11}} domain={[0,25]} unit="%" />
-              <Tooltip formatter={(v) => [`+${v}%`, "증가율"]} />
-              <Bar dataKey="growth" radius={[4,4,0,0]}>
-                {short.map((d,i) => <Cell key={i} fill={d.growth>=18?"#ef4444":d.growth>=13?"#f97316":"#10b981"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChartCanvas labels={labels} values={REGION_DATA.map(d=>d.growth)} colors={growColors} unit="%" />
         </div>
       </div>
     </div>
